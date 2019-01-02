@@ -7,7 +7,7 @@ import tensorflow as tf
 #from tensorflow.python import debug as tf_debug
 
 import numpy as np
-from QACNN_2 import QACNN
+from simnetCNN import MLPCnn
 from train import FLAGS
 
 
@@ -64,12 +64,13 @@ def dev(ckpt, out):
         sess = tf.Session(config=session_conf)
         #sess = tf_debug.LocalCLIDebugWrapperSession(sess)
         with sess.as_default():
-            cnn = QACNN(sequence_length=FLAGS.max_sequence_length,
+            cnn = MLPCnn(sequence_length=FLAGS.max_sequence_length,
 						vocab_size=FLAGS.vocab_size,
 						embedding_size=FLAGS.embedding_dim,
-						filter_sizes=list(map(int, FLAGS.filter_sizes.split(","))),
-                        filter_sizes2=list(map(int, FLAGS.filter_sizes2.split(","))),
+						window_size=list(map(int, FLAGS.window_sizes.split(","))),
 						num_filters=FLAGS.num_filters,
+                        hidden_size=FLAGS.hidden_size,
+                        margin=FLAGS.margin,
                         dropout_keep_prob=1.0,
 						l2_reg_lambda=FLAGS.l2_reg_lambda,
                         is_training=False)
@@ -105,7 +106,7 @@ def dev(ckpt, out):
                 }
 
 
-                score = tf.reshape(cnn.score12, [-1])
+                score = tf.reshape(cnn.output_prob, [-1])
 
                 ind = tf.argmax(score, 0)
 

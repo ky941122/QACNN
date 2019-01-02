@@ -3,7 +3,7 @@
 import tensorflow as tf
 import os
 import shutil
-from QACNN_2 import QACNN
+from simnetCNN import MLPCnn
 
 # Parameters
 # ==================================================
@@ -14,16 +14,17 @@ tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on 
 # Model Saving Parameters
 tf.flags.DEFINE_integer("model_version", 1, "model version")
 tf.flags.DEFINE_string("pb_save_path", "./pairwise_model", "pb save file.")
-tf.flags.DEFINE_string("checkpoint_path", "checkpoints/model-180000", "ckpt path")
+tf.flags.DEFINE_string("checkpoint_path", "runs/hingeloss_05/model-20000000", "ckpt path")
 
 # Model Hyperparameters
-tf.flags.DEFINE_integer("max_sequence_length", 20, "Max sequence length fo sentence (default: 200)")
-tf.flags.DEFINE_integer("vocab_size", 19423, "vocab.txt")
-tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 128)")
-tf.flags.DEFINE_string("filter_sizes", "1,2,3", "Comma-separated filter sizes (default: '3,4,5')")
-tf.flags.DEFINE_string("filter_sizes2", "3,5,7", "Comma-separated filter sizes (default: '3,4,5')")
-tf.flags.DEFINE_integer("num_filters", 512, "Number of filters per filter size (default: 128)")
+tf.flags.DEFINE_integer("max_sequence_length", 10, "Max sequence length fo sentence (default: 200)")
+tf.flags.DEFINE_integer("vocab_size", 16458, "vocab.txt")
+tf.flags.DEFINE_integer("embedding_dim", 256, "Dimensionality of character embedding (default: 128)")
+tf.flags.DEFINE_integer("window_size", 3, "Dimensionality of character embedding (default: 128)")
+tf.flags.DEFINE_integer("num_filters", 256, "Number of filters per filter size (default: 128)")
+tf.flags.DEFINE_integer("hidden_size", 128, "Number of filters per filter size (default: 128)")
 tf.flags.DEFINE_float("l2_reg_lambda", 0, "L2 regularizaion lambda (default: 0.0)")
+
 
 
 FLAGS = tf.flags.FLAGS
@@ -49,12 +50,12 @@ def export():
         with sess.as_default():
             # saver = tf.train.import_meta_graph("{}.meta".format(checkpoint_file))
 
-            cnn = QACNN(sequence_length=FLAGS.max_sequence_length,
+            cnn = MLPCnn(sequence_length=FLAGS.max_sequence_length,
 						vocab_size=FLAGS.vocab_size,
 						embedding_size=FLAGS.embedding_dim,
-						filter_sizes=list(map(int, FLAGS.filter_sizes.split(","))),
-                        filter_sizes2=list(map(int, FLAGS.filter_sizes2.split(","))),
+						window_size=FLAGS.window_size,
 						num_filters=FLAGS.num_filters,
+                        hidden_size=FLAGS.hidden_size,
                         dropout_keep_prob=1.0,
 						l2_reg_lambda=FLAGS.l2_reg_lambda,
                         is_training=False)
@@ -67,11 +68,11 @@ def export():
             saver.restore(sess, checkpoint_file)
 
             # Get the placeholders from the graph by name
-            input_x_1 = graph.get_operation_by_name("input_x_1").outputs[0]
-            input_x_2 = graph.get_operation_by_name("input_x_2").outputs[0]
+            input_x_1 = graph.get_operation_by_name("input_q").outputs[0]
+            input_x_2 = graph.get_operation_by_name("input_pos").outputs[0]
 
             # Tensors we want to evaluate
-            scores = graph.get_operation_by_name("output/score").outputs[0]
+            scores = graph.get_operation_by_name("Out/output_prob").outputs[0]
 
             model_version = FLAGS.model_version
             version_export_path = os.path.join(FLAGS.pb_save_path, str(model_version))

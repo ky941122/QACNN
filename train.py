@@ -7,33 +7,36 @@ import time
 import tensorflow as tf
 #from tensorflow.python import debug as tf_debug
 
-from QACNN_2 import QACNN
+from simnetCNN import MLPCnn
 import data_loader_2 as data_loader
 import datetime
 
 
 
 # Data
-tf.flags.DEFINE_string("train_file", "data/id_pairwise_data_shuf_1kw_1", "train data (id)")
-tf.flags.DEFINE_string("dev_data", "data/id_goodcase_es", "dev data (id)")
-tf.flags.DEFINE_integer("vocab_size", 19423, "vocab.txt")
+tf.flags.DEFINE_string("train_file", "data/id_pairwise_data_shuf", "train data (id)")
+tf.flags.DEFINE_string("dev_data", "_data/id_goodcase_es", "dev data (id)")
+tf.flags.DEFINE_integer("vocab_size", 16458, "vocab.txt")
 tf.flags.DEFINE_integer("pad_id", 0, "id for <pad> token in character list")
 
 # Model Hyperparameters
-tf.flags.DEFINE_integer("max_sequence_length", 20, "Max sequence length fo sentence (default: 200)")
-tf.flags.DEFINE_integer("embedding_dim", 300, "Dimensionality of character embedding (default: 128)")
+tf.flags.DEFINE_integer("max_sequence_length", 10, "Max sequence length fo sentence (default: 200)")
+tf.flags.DEFINE_integer("embedding_dim", 256, "Dimensionality of character embedding (default: 128)")
+tf.flags.DEFINE_string("window_sizes", "2,3,5", "window size")
+tf.flags.DEFINE_float("margin", 0.5, "learning_rate (default: 0.1)")
 tf.flags.DEFINE_string("filter_sizes", "1,2,3", "Comma-separated filter sizes (default: '3,4,5')")
 tf.flags.DEFINE_string("filter_sizes2", "3,5,7", "Comma-separated filter sizes (default: '3,4,5')")
-tf.flags.DEFINE_integer("num_filters", 512, "Number of filters per filter size (default: 128)")
-tf.flags.DEFINE_float("dropout_keep_prob", 0.7, "Dropout keep probability (default: 0.5)")
+tf.flags.DEFINE_integer("num_filters", 256, "Number of filters per filter size (default: 128)")
+tf.flags.DEFINE_integer("hidden_size", 128, "Number of filters per filter size (default: 128)")
+tf.flags.DEFINE_float("dropout_keep_prob", 0.8, "Dropout keep probability (default: 0.5)")
 tf.flags.DEFINE_float("l2_reg_lambda", 0, "L2 regularizaion lambda (default: 0.0)")
 tf.flags.DEFINE_float("learning_rate", 0.001, "learning_rate (default: 0.1)")
 
 # Training parameters
-tf.flags.DEFINE_integer("batch_size", 512, "Batch Size (default: 64)")
-tf.flags.DEFINE_integer("max_epoch", 500000, "Number of training epochs (default: 200)")
+tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
+tf.flags.DEFINE_integer("max_epoch", 50, "Number of training epochs (default: 200)")
 tf.flags.DEFINE_integer("evaluate_every", 10, "Evaluate model on dev set after this many steps (default: 100)")
-tf.flags.DEFINE_integer("checkpoint_every", 5000, "Save model after this many steps (default: 100)")
+tf.flags.DEFINE_integer("checkpoint_every", 10000, "Save model after this many steps (default: 100)")
 
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
@@ -74,12 +77,13 @@ def train():
         sess = tf.Session(config=session_conf)
         #sess = tf_debug.LocalCLIDebugWrapperSession(sess)
         with sess.as_default():
-            cnn = QACNN(sequence_length=FLAGS.max_sequence_length,
+            cnn = MLPCnn(sequence_length=FLAGS.max_sequence_length,
 						vocab_size=FLAGS.vocab_size,
 						embedding_size=FLAGS.embedding_dim,
-						filter_sizes=list(map(int, FLAGS.filter_sizes.split(","))),
-                        filter_sizes2=list(map(int, FLAGS.filter_sizes2.split(","))),
+						window_size=list(map(int, FLAGS.window_sizes.split(","))),
 						num_filters=FLAGS.num_filters,
+                        hidden_size=FLAGS.hidden_size,
+                        margin=FLAGS.margin,
                         dropout_keep_prob=FLAGS.dropout_keep_prob,
 						l2_reg_lambda=FLAGS.l2_reg_lambda,
                         is_training=True)
@@ -87,7 +91,7 @@ def train():
             global_step = tf.Variable(0, name="global_step", trainable=False)
             optimizer = tf.train.AdamOptimizer(FLAGS.learning_rate)
             grads_and_vars = optimizer.compute_gradients(cnn.loss)
-            capped_gvs = [(tf.clip_by_value(grad, -1., 1.), var) for grad, var in grads_and_vars]
+            capped_gvs = [(tf.clip_by_value(grad, -5., 5.), var) for grad, var in grads_and_vars]
 
             train_op = optimizer.apply_gradients(capped_gvs, global_step=global_step)
 
@@ -141,10 +145,10 @@ def train():
                     cnn.input_x_3: neg_batch
                 }
 
-                _, step, loss, acc = sess.run([train_op, global_step, cnn.loss, cnn.accuracy], feed_dict)
+                _, step, loss = sess.run([train_op, global_step, cnn.loss], feed_dict)
 
                 time_str = datetime.datetime.now().isoformat()
-                print "{}: Epoch {} step {}, loss {:g}, accuracy {:g}".format(time_str, epoch, step, loss, acc)
+                print "{}: Epoch {} step {}, loss {:g}".format(time_str, epoch, step, loss)
 
             # Generate batches
             batches = data_loader.batch_iter(data, FLAGS.batch_size, FLAGS.max_epoch, True)
