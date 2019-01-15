@@ -27,6 +27,8 @@ class QACNN():
         self.input_x_2 = tf.placeholder(tf.int32, [None, sequence_length], name="input_x_2")
         self.input_x_3 = tf.placeholder(tf.int32, [None, sequence_length], name="input_x_3")
 
+        self.enc_simq = tf.placeholder(tf.float32, [None, self.num_filters_total], name="simq")
+
         initializer = tf.keras.initializers.he_normal()
         
         # Embedding layer
@@ -68,14 +70,18 @@ class QACNN():
         
 
         with tf.variable_scope("output"):
-            q  =self.getRepresentation(self.input_x_1)
-            pos=self.getRepresentation(self.input_x_2)
+            self.q  =self.getRepresentation(self.input_x_1)
+            self.pos=self.getRepresentation(self.input_x_2)
             neg=self.getRepresentation(self.input_x_3)
 
-            self.score12 = self.cosine(q,pos)
-            self.score13 = self.cosine(q,neg)
+            self.score12 = self.cosine(self.q, self.pos)
+            self.score13 = self.cosine(self.q, neg)
+
+            self.score0 = self.cosine(self.enc_simq, self.pos)   #[batch]
+           # print self.score0.shape
 
             self.score = tf.identity(self.score12, name="score")
+            #print self.score.shape
 
             self.positive= tf.reduce_mean(self.score12)
             self.negative= tf.reduce_mean( self.score13)

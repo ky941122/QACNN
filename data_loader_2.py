@@ -51,3 +51,83 @@ def read_data(filename, seq_len, pad_id):
 
 
 
+def read_data2(filename, seq_len, pad_id):
+    pad_id = int(pad_id)
+    data = []
+    f = open(filename, "r")
+    s = 0
+    for line in f.readlines():
+        line = line.strip()
+        q, a1, a2 = line.split("\t")
+
+        q = q.strip()
+        q, q_tag = q.split("###")
+        q = q.strip()
+        q_tag = q_tag.strip()
+
+        q = q.split()
+        lq = len(q)
+        q = q[:seq_len]
+        q = q + [pad_id] * (seq_len - len(q))
+
+        q_tag = q_tag.split()
+        lqt = len(q_tag)
+
+        if lq != lqt:
+            s += 1
+            continue
+
+        q_tag = q_tag[:seq_len]
+        q_tag = q_tag + [pad_id] * (seq_len - len(q_tag))
+
+
+
+        a1 = a1.strip()
+        a1, a1_tag = a1.split("###")
+        a1 = a1.strip()
+        a1_tag = a1_tag.strip()
+
+        a1 = a1.split()
+        la1 = len(a1)
+        a1 = a1[:seq_len]
+        a1 = a1 + [pad_id] * (seq_len - len(a1))
+
+        a1_tag = a1_tag.split()
+        la1t = len(a1_tag)
+
+        if la1 != la1t:
+            s += 1
+            continue
+
+        a1_tag = a1_tag[:seq_len]
+        a1_tag = a1_tag + [pad_id] * (seq_len - len(a1_tag))
+
+
+
+        a2 = a2.strip()
+        a2, a2_tag = a2.split("###")
+        a2 = a2.strip()
+        a2_tag = a2_tag.strip()
+
+        a2 = a2.split()
+        la2 = len(a2)
+        a2 = a2[:seq_len]
+        a2 = a2 + [pad_id] * (seq_len - len(a2))
+
+        a2_tag = a2_tag.split()
+        la2t = len(a2_tag)
+
+        if la2 != la2t:
+            s += 1
+            continue
+
+        a2_tag = a2_tag[:seq_len]
+        a2_tag = a2_tag + [pad_id] * (seq_len - len(a2_tag))
+
+        data.append((q, a1, a2, q_tag, a1_tag, a2_tag))
+
+    print "read data done..., Skip", s, "lines!!!"
+    return data
+
+
+

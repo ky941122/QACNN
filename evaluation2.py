@@ -9,8 +9,8 @@ import tensorflow as tf
 #from tensorflow.python import debug as tf_debug
 
 import numpy as np
-from simnetCNN import MLPCnn
-from train import FLAGS
+from simnetCNN2 import MLPTagCnn
+from train2 import FLAGS
 
 
 
@@ -35,17 +35,37 @@ def load_data(filename, seq_len, pad_id):
         esqs = line[1:]
 
         usrq = usrq.strip()
+        usrq, usrq_tag = usrq.split("###")
+        usrq = usrq.strip()
+        usrq_tag = usrq_tag.strip()
+
         usrq = usrq.split()
+        l1 = len(usrq)
         usrq = usrq[:seq_len]
         usrq = usrq + [pad_id] * (seq_len - len(usrq))
-        dataLine.append(usrq)
+
+        usrq_tag = usrq_tag.split()
+        assert len(usrq_tag) == l1
+        usrq_tag = usrq_tag[:seq_len]
+        usrq_tag = usrq_tag + [pad_id] * (seq_len - len(usrq_tag))
+        dataLine.append((usrq, usrq_tag))
 
         for esq in esqs:
             esq = esq.strip()
+            esq, esq_tag = esq.split("###")
+            esq = esq.strip()
+            esq_tag = esq_tag.strip()
+
             esq = esq.split()
+            l2 = len(esq)
             esq = esq[:seq_len]
             esq = esq + [pad_id] * (seq_len - len(esq))
-            dataLine.append(esq)
+
+            esq_tag = esq_tag.split()
+            assert len(esq_tag) == l2
+            esq_tag = esq_tag[:seq_len]
+            esq_tag = esq_tag + [pad_id] * (seq_len - len(esq_tag))
+            dataLine.append((esq, esq_tag))
 
         data.append(dataLine)
 
@@ -67,16 +87,18 @@ def dev(ckpt, out):
             sess = tf.Session(config=session_conf)
             #sess = tf_debug.LocalCLIDebugWrapperSession(sess)
             with sess.as_default():
-                cnn = MLPCnn(sequence_length=FLAGS.max_sequence_length,
-                            vocab_size=FLAGS.vocab_size,
-                            embedding_size=FLAGS.embedding_dim,
-                            window_size=list(map(int, FLAGS.window_sizes.split(","))),
-                            num_filters=FLAGS.num_filters,
-                            hidden_size=FLAGS.hidden_size,
-                            margin=FLAGS.margin,
-                            dropout_keep_prob=1.0,
-                            l2_reg_lambda=FLAGS.l2_reg_lambda,
-                            is_training=False)
+                cnn = MLPTagCnn(sequence_length=FLAGS.max_sequence_length,
+                                vocab_size=FLAGS.vocab_size,
+                                tagVocab_size=FLAGS.tag_vocab_size,
+                                embedding_size=FLAGS.embedding_dim,
+                                tagEmb_size=FLAGS.tagEmb_dim,
+                                window_size=list(map(int, FLAGS.window_sizes.split(","))),
+                                num_filters=FLAGS.num_filters,
+                                hidden_size=FLAGS.hidden_size,
+                                margin=FLAGS.margin,
+                                dropout_keep_prob=1.0,
+                                l2_reg_lambda=FLAGS.l2_reg_lambda,
+                                is_training=False)
 
                 saver = tf.train.Saver(tf.global_variables())
 
@@ -87,25 +109,29 @@ def dev(ckpt, out):
 
                 saver.restore(sess, ckpt)
 
-                h = 1
                 index = []
                 for sample in data:
 
-                    usrq = sample[0]
-                    esqs = sample[1:]
+                    usrq, usrq_tag = sample[0]
+                    ess = sample[1:]
+
                     usrqs = []
-                    for esq in esqs:
+                    usrq_tags = []
+                    esqs = []
+                    esq_tags = []
+
+                    for esq in ess:
+                        q, tag = esq
                         usrqs.append(usrq)
-
-                    if np.array(usrqs).shape[-1] != FLAGS.max_sequence_length or np.array(esqs).shape[-1] != FLAGS.max_sequence_length:
-                        print h
-                        index.append(-999)
-                        continue
-
+                        usrq_tags.append(usrq_tag)
+                        esqs.append(q)
+                        esq_tags.append(tag)
 
                     feed_dict = {
                         cnn.input_x_1: usrqs,
-                        cnn.input_x_2: esqs
+                        cnn.input_x_2: esqs,
+                        cnn.input_x_11: usrq_tags,
+                        cnn.input_x_22: esq_tags
                     }
 
 
@@ -117,7 +143,6 @@ def dev(ckpt, out):
 
                     index.append(i)
 
-                    h += 1
 
                 assert len(index) == len(data)
 
