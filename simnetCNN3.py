@@ -27,8 +27,6 @@ class MLPTagPosiCnn():
 
         initializer = tf.keras.initializers.he_normal()
 
-        self.batch_size = tf.placeholder(tf.int32, [], name="batch_size")
-
         # Embedding layer
         with tf.variable_scope("Embedding"):
             self.embedding_W = tf.get_variable("embedding",shape=[vocab_size, embedding_size])
@@ -51,9 +49,12 @@ class MLPTagPosiCnn():
         with tf.variable_scope("Position_Embedding"):
             self.position_embedding = tf.get_variable("position_embedding", shape=[sequence_length, embedding_size])
 
-            q_position_ind = tf.tile(tf.expand_dims(tf.range(sequence_length), 0), [self.batch_size, 1])
-            pos_position_ind = tf.tile(tf.expand_dims(tf.range(sequence_length), 0), [self.batch_size, 1])
-            neg_position_ind = tf.tile(tf.expand_dims(tf.range(sequence_length), 0), [self.batch_size, 1])
+            q_position_ind = tf.tile(tf.expand_dims(tf.range(tf.shape(self.input_x_1)[1]), 0),
+                                     [tf.shape(self.input_x_1)[0], 1])
+            pos_position_ind = tf.tile(tf.expand_dims(tf.range(tf.shape(self.input_x_2)[1]), 0),
+                                     [tf.shape(self.input_x_2)[0], 1])
+            neg_position_ind = tf.tile(tf.expand_dims(tf.range(tf.shape(self.input_x_3)[1]), 0),
+                                     [tf.shape(self.input_x_3)[0], 1])
 
             position_q = tf.nn.embedding_lookup(self.position_embedding, q_position_ind)
             position_pos = tf.nn.embedding_lookup(self.position_embedding, pos_position_ind)

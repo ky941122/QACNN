@@ -245,8 +245,7 @@ def train():
                         cnn.input_x_22: pos_tag_batch,
                         cnn.input_x_33: neg_tag_batch,
                         cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
-                        cnn.is_training: True,
-                        cnn.batch_size: FLAGS.batch_size
+                        cnn.is_training: True
                     }
 
                     _, step, loss = sess.run([train_op, global_step, cnn.loss], feed_dict)
@@ -278,16 +277,13 @@ def train():
 
                         assert len(usrqs) == len(esqs) == len(usrq_tags) == len(esq_tags)
 
-                        dev_batch = len(usrqs)
-
                         feed_dict = {
                             cnn.input_x_1: usrqs,
                             cnn.input_x_2: esqs,
                             cnn.input_x_11: usrq_tags,
                             cnn.input_x_22: esq_tags,
                             cnn.dropout_keep_prob: 1.0,
-                            cnn.is_training: False,
-                            cnn.batch_size: dev_batch
+                            cnn.is_training: False
                         }
 
                         score = tf.reshape(cnn.output_prob, [-1])
