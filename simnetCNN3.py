@@ -27,7 +27,7 @@ class MLPTagPosiCnn():
 
         initializer = tf.keras.initializers.he_normal()
 
-        self.batch_size = self.input_x_1.get_shape().as_list()[0]
+        self.batch_size = tf.placeholder(tf.int32, [], name="batch_size")
 
         # Embedding layer
         with tf.variable_scope("Embedding"):

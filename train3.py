@@ -15,9 +15,9 @@ import datetime
 
 
 # Data
-tf.flags.DEFINE_string("train_file", "data/id_pairwise_data_xmwjinfu_2.0", "train data (id)")
-tf.flags.DEFINE_string("dev_data", "data/xinwang_test/id_xinwang_test_jinfu_2.0", "dev data (id)")
-tf.flags.DEFINE_integer("vocab_size", 10000, "vocab.txt")
+tf.flags.DEFINE_string("train_file", "data/id_pairwise_data3.0", "train data (id)")
+tf.flags.DEFINE_string("dev_data", "data/id_zhongxin_dev_3.0", "dev data (id)")
+tf.flags.DEFINE_integer("vocab_size", 15000, "vocab.txt")
 tf.flags.DEFINE_integer("tag_vocab_size", 3, "vocab.txt")
 tf.flags.DEFINE_integer("pad_id", 0, "id for <pad> token in character list")
 
@@ -30,7 +30,7 @@ tf.flags.DEFINE_string("filter_sizes", "1,2,3", "Comma-separated filter sizes (d
 tf.flags.DEFINE_string("filter_sizes2", "3,5,7", "Comma-separated filter sizes (default: '3,4,5')")
 tf.flags.DEFINE_integer("num_filters", 256, "Number of filters per filter size (default: 128)")
 tf.flags.DEFINE_integer("hidden_size", 512, "Number of filters per filter size (default: 128)")
-tf.flags.DEFINE_float("dropout_keep_prob", 0.6, "Dropout keep probability (default: 0.5)")
+tf.flags.DEFINE_float("dropout_keep_prob", 0.7, "Dropout keep probability (default: 0.5)")
 tf.flags.DEFINE_float("l2_reg_lambda", 0, "L2 regularizaion lambda (default: 0.0)")
 tf.flags.DEFINE_float("learning_rate", 0.001, "learning_rate (default: 0.1)")
 
@@ -38,7 +38,7 @@ tf.flags.DEFINE_float("learning_rate", 0.001, "learning_rate (default: 0.1)")
 tf.flags.DEFINE_integer("batch_size", 64, "Batch Size (default: 64)")
 tf.flags.DEFINE_integer("max_epoch", 50, "Number of training epochs (default: 200)")
 tf.flags.DEFINE_integer("evaluate_every", 10, "Evaluate model on dev set after this many steps (default: 100)")
-tf.flags.DEFINE_integer("checkpoint_every", 400000, "Save model after this many steps (default: 100)")
+tf.flags.DEFINE_integer("checkpoint_every", 200000, "Save model after this many steps (default: 100)")
 
 # Misc Parameters
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
@@ -115,23 +115,23 @@ def load_dev_data(filename, seq_len, pad_id):
 
 
 def get_result(indexs):
-    f2 = open("data/xinwang_test/kID", "r")
+    f2 = open("data/es_kID_zhongxin", "r")
     kIDs = f2.readlines()
     kIDs = [kID.strip() for kID in kIDs]
     #print kIDs
 
-    f3 = open("data/xinwang_test/true_kID", 'r')
+    f3 = open("data/zhongxin_test_truekid", 'r')
     labels = f3.readlines()
     labels = [label.strip() for label in labels]
     #print labels
 
     #print len(labels), len(kIDs), len(indexs)
-    assert len(labels) == len(kIDs) == len(indexs) == 800
+    assert len(labels) == len(kIDs) == len(indexs)
 
     count = 0
     right = 0
     j = 0
-    for i in range(800):
+    for i in range(len(labels)):
         label = labels[i]
         es_IDs = kIDs[i]
         es_IDs = es_IDs.strip()
@@ -164,7 +164,7 @@ def train():
 
     print "Loading dev data..."
     dev_data = load_dev_data(FLAGS.dev_data, FLAGS.max_sequence_length, FLAGS.pad_id)
-    assert len(dev_data) == 800
+    # assert len(dev_data) == 800
     print "Dev data Size:", len(dev_data)
 
     with tf.device('/gpu:5'):
@@ -245,7 +245,8 @@ def train():
                         cnn.input_x_22: pos_tag_batch,
                         cnn.input_x_33: neg_tag_batch,
                         cnn.dropout_keep_prob: FLAGS.dropout_keep_prob,
-                        cnn.is_training: True
+                        cnn.is_training: True,
+                        cnn.batch_size: FLAGS.batch_size
                     }
 
                     _, step, loss = sess.run([train_op, global_step, cnn.loss], feed_dict)
@@ -275,13 +276,18 @@ def train():
                             esqs.append(q)
                             esq_tags.append(tag)
 
+                        assert len(usrqs) == len(esqs) == len(usrq_tags) == len(esq_tags)
+
+                        dev_batch = len(usrqs)
+
                         feed_dict = {
                             cnn.input_x_1: usrqs,
                             cnn.input_x_2: esqs,
                             cnn.input_x_11: usrq_tags,
                             cnn.input_x_22: esq_tags,
                             cnn.dropout_keep_prob: 1.0,
-                            cnn.is_training: False
+                            cnn.is_training: False,
+                            cnn.batch_size: dev_batch
                         }
 
                         score = tf.reshape(cnn.output_prob, [-1])
